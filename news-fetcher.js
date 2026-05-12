@@ -18,6 +18,16 @@ const GEO_KEYWORDS = [
   'interest rate', 'inflation', 'recession'
 ];
 
+
+// Currency to asset mapping
+const CURRENCY_ASSET_MAP = {
+  'USD': 'EURUSD, GBPUSD, USDJPY, XAUUSD, NAS100, SPX500, USOIL, BTCUSD',
+  'EUR': 'EURUSD',
+  'GBP': 'GBPUSD',
+  'JPY': 'USDJPY',
+  'XAU': 'XAUUSD',
+};
+
 // Store news data
 let forexNews = [];
 let geoNews   = [];
@@ -282,6 +292,7 @@ function showNewsAlert(event, minsAway, urgent = false) {
     <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${event.event}</div>
     <div style="font-size:11px;color:#64748b;">
       Currency: ${event.currency} · Impact: ${event.impact}<br>
+      Affects: ${CURRENCY_ASSET_MAP[event.currency] || event.currency}<br>
       Forecast: ${event.forecast} · Previous: ${event.previous}
     </div>
     ${urgent ? '<div style="font-size:11px;color:#ff4466;margin-top:6px;">⚠️ Consider closing or avoiding new trades</div>' : ''}
@@ -332,6 +343,9 @@ function renderForexNews() {
         <div class="nx-ntxt">${event.event}</div>
         <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">
           <span class="nx-nimp nimp-h">HIGH</span>
+          <span style="font-size:10px;font-family:'Space Mono',monospace;color:#c8a84b50;margin-left:4px;">
+            → ${CURRENCY_ASSET_MAP[event.currency] || event.currency}
+          </span>
           <span style="font-size:10px;font-family:'Space Mono',monospace;color:#1e3040;">
             F: ${event.forecast} | P: ${event.previous}
             ${event.actual !== 'Pending' ? ' | A: ' + event.actual : ''}
