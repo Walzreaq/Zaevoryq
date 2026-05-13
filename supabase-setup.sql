@@ -45,3 +45,40 @@ create policy "Admin can insert signals"
 create policy "Admin can update signals"
   on signals for update
   using (true);
+
+-- AI Learning Events Table
+create table if not exists ai_learning (
+  id            uuid default gen_random_uuid() primary key,
+  created_at    timestamptz default now(),
+  asset         text,
+  signal_type   text,
+  mode          text,
+  confidence    int,
+  risk_level    text,
+  result        text,
+  lessons       text[],
+  adjustments   jsonb,
+  scores        jsonb,
+  news_present  bool default false,
+  news_currency text,
+  news_impact   text
+);
+
+-- AI Weights Table
+create table if not exists ai_weights (
+  id                 uuid default gen_random_uuid() primary key,
+  created_at         timestamptz default now(),
+  weights            jsonb,
+  asset_adjustments  jsonb,
+  news_penalty       jsonb,
+  note               text
+);
+
+-- Enable RLS
+alter table ai_learning enable row level security;
+alter table ai_weights  enable row level security;
+
+create policy "Anyone can read learning" on ai_learning for select using (true);
+create policy "Anyone can insert learning" on ai_learning for insert with check (true);
+create policy "Anyone can read weights" on ai_weights for select using (true);
+create policy "Anyone can insert weights" on ai_weights for insert with check (true);
