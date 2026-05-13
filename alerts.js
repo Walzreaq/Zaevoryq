@@ -363,4 +363,161 @@ window.ZaevoryqAlerts = {
   renderNotificationSettings,
 };
 
+
+// ============================================
+// STANDBY ALERT SYSTEM
+// Elite + Admin only — 5 mins before signal
+// ============================================
+
+// Track standby states to avoid duplicate alerts
+let standbyAlerts = {};
+
+// Check if user can receive standby alerts
+function canReceiveStandby() {
+  const plan    = window.ZaevoryqUser?.plan || 'free';
+  const isAdmin = window.ZaevoryqUser?.email === 'walzreaq@gmail.com';
+  return isAdmin || plan === 'elite';
+}
+
+// Detect potential setup forming (pre-signal check)
+function detectPotentialSetup(asset, allTimeframeData, mode = 'swing') {
+  if (!canReceiveStandby()) return null;
+
+  const primaryTF = mode === 'scalping' ? 'M15' : mode === 'intraday' ? 'H1' : 'H4';
+  const candles   = allTimeframeData[primaryTF];
+  if (!candles || candles.length < 20) return null;
+
+  // Run 3 core checks for standby trigger
+  const structure = window.ZaevoryqSignal?.analyzeMarketStructure(candles);
+  const supdem    = window.ZaevoryqSignal?.analyzeSupplyDemand(candles);
+  const trend     = window.ZaevoryqSignal?.analyzeTrend(candles);
+
+  if (!structure || !supdem || !trend) return null;
+
+  // Need all 3 to agree on same direction
+  const directions = [structure.direction, supdem.direction, trend.direction];
+  const bullCount  = directions.filter(d => d === 'bullish').length;
+  const bearCount  = directions.filter(d => d === 'bearish').length;
+
+  if (bullCount < 3 && bearCount < 3) return null;
+
+  const direction     = bullCount >= bearCount ? 'bullish' : 'bearish';
+  const signalType    = direction === 'bullish' ? 'BUY' : 'SELL';
+  const buildingConf  = Math.round((structure.score + supdem.score + trend.score) * 0.8);
+
+  // Avoid duplicate standby for same asset
+  const key = `${asset}_${signalType}`;
+  if (standbyAlerts[key]) return null;
+
+  return { asset, signalType, buildingConf, direction };
+}
+
+// Send standby alert — Elite + Admin only
+function alertStandby(asset, signalType, buildingConfidence) {
+  if (!canReceiveStandby()) return;
+
+  const key = `${asset}_${signalType}`;
+  if (standbyAlerts[key]) return;
+
+  // Mark as sent
+  standbyAlerts[key] = true;
+
+  // Clear standby after 10 minutes
+  setTimeout(() => {
+    delete standbyAlerts[key];
+  }, 10 * 60 * 1000);
+
+  const direction = signalType.includes('BUY') ? '📈' : '📉';
+
+  // Push notification
+  sendPushNotification(
+    `🟡 STANDBY — ${signalType} ${asset} FORMING`,
+    `Potential ${signalType} setup detected on ${asset}\nConfidence building: ${buildingConfidence}%\nStand by — signal may be issued in ~5 mins`,
+    {
+      tag:  `standby_${asset}`,
+      url:  '/dashboard.html',
+      requireInteraction: true,
+      vibrate: [100, 50, 100, 50, 100],
+    }
+  );
+
+  // In-app alert
+  showInAppAlert({
+    type:    'standby',
+    title:   `🟡 STANDBY ALERT — ${signalType} ${asset}`,
+    message: `${direction} Potential setup forming — Confidence building: ${buildingConfidence}%\nStand by for signal in ~5 mins`,
+    color:   '#c8a84b',
+    urgent:  true,
+  });
+
+  console.log(`ZAEVORYQ AI — Standby alert sent: ${signalType} ${asset}`);
+}
+
+// Alert when standby setup is invalidated
+function alertStandbyInvalidated(asset, signalType) {
+  if (!canReceiveStandby()) return;
+
+  const key = `${asset}_${signalType}`;
+  delete standbyAlerts[key];
+
+  sendPushNotification(
+    `❌ SETUP INVALIDATED — ${asset}`,
+    `The potential ${signalType} ${asset} setup did not confirm.\nNo signal will be issued.`,
+    { tag: `standby_cancel_${asset}`, url: '/dashboard.html' }
+  );
+
+  showInAppAlert({
+    type:    'standby_cancel',
+    title:   `❌ SETUP INVALIDATED — ${asset}`,
+    message: `${signalType} ${asset} setup did not confirm — No signal issued`,
+    color:   '#ff4466',
+    urgent:  false,
+  });
+}
+
+// Main standby monitoring loop
+// Runs every 5 minutes to check all assets
+function startStandbyMonitor(allAssetsData) {
+  if (!canReceiveStandby()) return;
+
+  const assets = ['XAUUSD','EURUSD','GBPUSD','USDJPY','XAGUSD','NAS100','SPX500','USOIL','BTCUSD'];
+  const modes  = ['swing','intraday','scalping'];
+
+  assets.forEach(asset => {
+    if (!allAssetsData[asset]) return;
+
+    modes.forEach(mode => {
+      const potential = detectPotentialSetup(asset, allAssetsData[asset], mode);
+      if (potential) {
+        alertStandby(potential.asset, potential.signalType, potential.buildingConf);
+
+        // After 5 mins check if signal confirmed or invalidated
+        setTimeout(async () => {
+          if (window.ZaevoryqData) {
+            const freshData = await window.ZaevoryqData.getAllTimeframes(asset);
+            const signal    = window.ZaevoryqSignal?.generateSignal(asset, freshData, mode);
+
+            if (signal?.signal) {
+              // Signal confirmed — full alert will fire from signal engine
+              console.log(`ZAEVORYQ AI — Standby confirmed: ${signal.signal} ${asset}`);
+            } else {
+              // Setup invalidated
+              alertStandbyInvalidated(asset, potential.signalType);
+            }
+          }
+        }, 5 * 60 * 1000); // 5 minutes
+      }
+    });
+  });
+}
+
+// Add standby to exports
+window.ZaevoryqAlerts.alertStandby          = alertStandby;
+window.ZaevoryqAlerts.alertStandbyInvalidated = alertStandbyInvalidated;
+window.ZaevoryqAlerts.startStandbyMonitor   = startStandbyMonitor;
+window.ZaevoryqAlerts.canReceiveStandby     = canReceiveStandby;
+window.ZaevoryqAlerts.detectPotentialSetup  = detectPotentialSetup;
+
+console.log('ZAEVORYQ AI — Standby Alert System Loaded ✅');
+
 console.log('ZAEVORYQ AI — Alert System Loaded ✅');
