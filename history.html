@@ -31,6 +31,7 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
 
 .zv-loading{text-align:center;padding:60px;font-size:12px;font-family:'Space Mono',monospace;color:#1e3040;letter-spacing:0.1em;}
 </style>
+  <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 
@@ -44,6 +45,15 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
     <a class="zv-nl active" href="history.html">History</a>
     <a class="zv-nl" href="login.html">Account</a>
     <button class="zv-signout" onclick="ZaevoryqAuth.signOut()">Sign Out</button>
+  </div>
+
+  <!-- Mobile Menu -->
+  <button class="zv-mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+  <div class="zv-mobile-menu" id="mobile-menu">
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="history.html">Signal History</a>
+    <a href="login.html">Account</a>
   </div>
 </nav>
 

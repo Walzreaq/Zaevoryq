@@ -127,6 +127,7 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;overflow
 /* COUNTER */
 .count-up{display:inline-block;}
 </style>
+  <link rel="stylesheet" href="mobile.css">
 </head>
 <body>
 <div class="zv-nav">
@@ -323,5 +324,20 @@ document.querySelectorAll('.count-up').forEach(el => observer.observe(el));
   <script src="marketdata.js"></script>
   <script src="signal-engine.js"></script>
   <script src="news-fetcher.js"></script>
+
+<script>
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  if (menu) menu.classList.toggle('open');
+}
+// Close menu on outside click
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('mobile-menu');
+  const btn  = document.querySelector('.zv-mobile-menu-btn');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+</script>
 </body>
 </html>
