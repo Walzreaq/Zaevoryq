@@ -3,6 +3,8 @@
   "routes": [
     { "src": "/", "dest": "/index.html" },
     { "src": "/login", "dest": "/login.html" },
-    { "src": "/dashboard", "dest": "/dashboard.html" }
+    { "src": "/dashboard", "dest": "/dashboard.html" },
+    { "src": "/history", "dest": "/history.html" },
+    { "src": "/admin", "dest": "/admin.html" }
   ]
 }
