@@ -291,9 +291,9 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;overflow
   </div>
   <div class="zv-footer-copy">© 2026 ZAEVORYQ AI — All rights reserved</div>
   <div class="zv-footer-links">
-    <a href="#">Privacy</a>
-    <a href="#">Terms</a>
-    <a href="#">Support</a>
+    <a href="#" onclick="event.preventDefault();openPopup('popup-privacy')">Privacy</a>
+    <a href="#" onclick="event.preventDefault();openPopup('popup-terms')">Terms</a>
+    <a href="#" onclick="event.preventDefault();openPopup('popup-support')">Support</a>
   </div>
 </div>
 
@@ -336,6 +336,393 @@ document.addEventListener('click', function(e) {
   const btn  = document.querySelector('.zv-mobile-menu-btn');
   if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
     menu.classList.remove('open');
+  }
+});
+</script>
+
+<!-- ============================================
+     ZAEVORYQ AI — POPUP MODALS
+     Privacy, Terms, Support
+     ============================================ -->
+
+<style>
+.zv-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,4,8,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+.zv-overlay.open {
+  display: flex;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.zv-popup {
+  background: #0a0e16;
+  border: 1px solid #c8a84b40;
+  border-radius: 8px;
+  padding: 32px 36px;
+  max-width: 560px;
+  width: 100%;
+  position: relative;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.zv-popup::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c8a84b80, transparent);
+  border-radius: 8px 8px 0 0;
+}
+.zv-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.zv-popup-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.zv-popup-title span {
+  color: #c8a84b;
+  text-shadow: 0 0 12px #c8a84b60;
+}
+.zv-popup-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(200,168,75,0.08);
+  border: 1px solid #c8a84b30;
+  color: #c8a84b;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.zv-popup-close:hover {
+  background: rgba(200,168,75,0.15);
+}
+.zv-popup-divider {
+  height: 1px;
+  background: linear-gradient(90deg, #c8a84b30, transparent);
+  margin-bottom: 20px;
+}
+.zv-popup-section {
+  margin-bottom: 18px;
+}
+.zv-popup-section-title {
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  color: #c8a84b;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zv-popup-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #c8a84b20, transparent);
+}
+.zv-popup-text {
+  font-size: 13px;
+  font-family: 'Rajdhani', sans-serif;
+  color: #c0cdd8;
+  line-height: 1.8;
+  font-weight: 500;
+}
+.zv-popup-text strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+.zv-popup-text a {
+  color: #c8a84b;
+  text-decoration: none;
+}
+.zv-popup-text a:hover {
+  text-shadow: 0 0 8px #c8a84b60;
+}
+.zv-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  color: #c8a84b;
+  border: 1px solid #c8a84b30;
+  padding: 3px 10px;
+  border-radius: 2px;
+  background: rgba(200,168,75,0.05);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.zv-popup-warn {
+  background: rgba(255,68,102,0.06);
+  border: 1px solid #ff446630;
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  color: #ff9aaa;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+.zv-support-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #0d1820;
+}
+.zv-support-row:last-child { border-bottom: none; }
+.zv-support-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: rgba(200,168,75,0.08);
+  border: 1px solid #c8a84b25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.zv-support-info {}
+.zv-support-label {
+  font-size: 11px;
+  font-family: 'Space Mono', monospace;
+  color: #c8a84b;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.zv-support-val {
+  font-size: 13px;
+  color: #dde8f0;
+  font-weight: 600;
+}
+
+/* Scrollbar styling for popup */
+.zv-popup::-webkit-scrollbar { width: 4px; }
+.zv-popup::-webkit-scrollbar-track { background: #0a0e16; }
+.zv-popup::-webkit-scrollbar-thumb { background: #c8a84b40; border-radius: 2px; }
+
+/* Mobile popup */
+@media (max-width: 600px) {
+  .zv-popup { padding: 24px 20px; }
+  .zv-popup-title { font-size: 15px; }
+}
+</style>
+
+<!-- PRIVACY POPUP -->
+<div class="zv-overlay" id="popup-privacy" onclick="closePopupOutside(event,'popup-privacy')">
+  <div class="zv-popup">
+    <div class="zv-popup-head">
+      <div class="zv-popup-title">🔒 Privacy <span>Policy</span></div>
+      <button class="zv-popup-close" onclick="closePopup('popup-privacy')">✕</button>
+    </div>
+    <div class="zv-popup-divider"></div>
+    <div class="zv-popup-badge">⚡ Last updated — May 2026</div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">What We Collect</div>
+      <div class="zv-popup-text">
+        ZAEVORYQ AI collects only the minimum data needed to operate the platform. This includes your <strong>name, email address, and subscription plan</strong> when you create an account. We do not collect payment card information directly — all transactions are handled by secure third-party payment processors.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">How We Use Your Data</div>
+      <div class="zv-popup-text">
+        Your data is used solely to <strong>manage your account, deliver AI signals, and improve platform performance</strong>. We track signal performance per user to power the AI learning system and improve accuracy over time. We do not use your data for advertising or sell it to any third parties — ever.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Data Storage & Security</div>
+      <div class="zv-popup-text">
+        All user data is stored securely on <strong>Supabase</strong> with 256-bit SSL encryption. Access is restricted to authorised systems only. We follow industry-standard security practices to protect your information at all times.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Your Rights</div>
+      <div class="zv-popup-text">
+        You have the right to <strong>access, update, or delete your account data</strong> at any time. To request data deletion or a full export of your data, contact us at <a href="mailto:support@zaevoryq.ai">support@zaevoryq.ai</a>. We will process all requests within 7 business days.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Cookies</div>
+      <div class="zv-popup-text">
+        ZAEVORYQ AI uses essential cookies only — these are required for login sessions and platform functionality. We do not use tracking or advertising cookies.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TERMS POPUP -->
+<div class="zv-overlay" id="popup-terms" onclick="closePopupOutside(event,'popup-terms')">
+  <div class="zv-popup">
+    <div class="zv-popup-head">
+      <div class="zv-popup-title">📋 Terms of <span>Service</span></div>
+      <button class="zv-popup-close" onclick="closePopup('popup-terms')">✕</button>
+    </div>
+    <div class="zv-popup-divider"></div>
+    <div class="zv-popup-badge">⚡ Last updated — May 2026</div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Not Financial Advice</div>
+      <div class="zv-popup-text">
+        All signals, analysis, and content provided by ZAEVORYQ AI are for <strong>educational and informational purposes only</strong>. Nothing on this platform constitutes financial advice, investment advice, or a recommendation to buy or sell any financial instrument. Always do your own research.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Trading Risk</div>
+      <div class="zv-popup-text">
+        Trading forex, commodities, indices, and cryptocurrencies involves <strong>significant financial risk</strong>. You may lose some or all of your capital. Past signal performance does not guarantee future results. ZAEVORYQ AI is not responsible for any trading losses incurred while using our signals.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Subscription Terms</div>
+      <div class="zv-popup-text">
+        Subscriptions are billed on a <strong>monthly or yearly basis</strong> depending on your chosen plan. You may cancel at any time — your access continues until the end of the current billing period. No refunds are issued for partial periods unless required by law.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Account Responsibility</div>
+      <div class="zv-popup-text">
+        You are responsible for <strong>maintaining the security of your account</strong> and all activity that occurs under it. Do not share your login credentials. ZAEVORYQ AI reserves the right to suspend accounts found to be sharing access across multiple users.
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Platform Changes</div>
+      <div class="zv-popup-text">
+        ZAEVORYQ AI reserves the right to <strong>modify, update, or discontinue</strong> any feature of the platform at any time. We will notify users of significant changes via email or platform notifications. Continued use of the platform constitutes acceptance of updated terms.
+      </div>
+    </div>
+
+    <div class="zv-popup-warn">
+      ⚠️ By using ZAEVORYQ AI you acknowledge that trading carries risk and that signals provided are not guaranteed to be profitable. Trade responsibly.
+    </div>
+  </div>
+</div>
+
+<!-- SUPPORT POPUP -->
+<div class="zv-overlay" id="popup-support" onclick="closePopupOutside(event,'popup-support')">
+  <div class="zv-popup">
+    <div class="zv-popup-head">
+      <div class="zv-popup-title">💬 <span>Support</span> Center</div>
+      <button class="zv-popup-close" onclick="closePopup('popup-support')">✕</button>
+    </div>
+    <div class="zv-popup-divider"></div>
+    <div class="zv-popup-badge">⚡ Response time — within 24 hours</div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Contact Us</div>
+      <div class="zv-support-row">
+        <div class="zv-support-icon">📧</div>
+        <div class="zv-support-info">
+          <div class="zv-support-label">Email Support</div>
+          <div class="zv-support-val"><a href="mailto:support@zaevoryq.ai" style="color:#c8a84b;text-decoration:none;">support@zaevoryq.ai</a></div>
+        </div>
+      </div>
+      <div class="zv-support-row">
+        <div class="zv-support-icon">⏰</div>
+        <div class="zv-support-info">
+          <div class="zv-support-label">Response Time</div>
+          <div class="zv-support-val">Within 24 hours (Mon–Fri)</div>
+        </div>
+      </div>
+      <div class="zv-support-row">
+        <div class="zv-support-icon">🌍</div>
+        <div class="zv-support-info">
+          <div class="zv-support-label">Timezone</div>
+          <div class="zv-support-val">Brunei Standard Time (UTC+8)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zv-popup-section">
+      <div class="zv-popup-section-title">Frequently Asked Questions</div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px;">What is ZAEVORYQ AI?</div>
+        <div class="zv-popup-text">An AI-powered signal platform that analyzes forex, metals, indices and crypto markets using technical and fundamental analysis — learning from every trade.</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px;">Do I need trading experience to use this?</div>
+        <div class="zv-popup-text">No. ZAEVORYQ AI provides full signal details including entry, stop loss, and take profit levels with AI reasoning. Beginners and experienced traders can both benefit.</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px;">What makes this different from other signal services?</div>
+        <div class="zv-popup-text">ZAEVORYQ AI learns from every trade — when a signal hits SL, the AI adjusts its analysis weights so it makes smarter decisions next time. It gets better the longer it runs.</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px;">What markets does ZAEVORYQ cover?</div>
+        <div class="zv-popup-text">Forex (EURUSD, GBPUSD, USDJPY), Metals (XAUUSD, XAGUSD), Indices (NAS100, SPX500, USOIL), and Crypto (BTCUSD).</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:4px;">Can I cancel my subscription anytime?</div>
+        <div class="zv-popup-text">Yes. Cancel anytime from your account settings. You keep access until the end of your current billing period with no extra charges.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP SCRIPTS -->
+<script>
+function openPopup(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closePopup(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closePopupOutside(event, id) {
+  if (event.target === document.getElementById(id)) {
+    closePopup(id);
+  }
+}
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    ['popup-privacy','popup-terms','popup-support'].forEach(closePopup);
+    document.body.style.overflow = '';
   }
 });
 </script>
