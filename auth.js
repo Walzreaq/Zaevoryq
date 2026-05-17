@@ -52,7 +52,11 @@ async function signIn(email, password) {
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    await loadUserProfile(data.user.id);
+    
+    // Load profile in background — dont wait for it
+    loadUserProfile(data.user.id).catch(e => console.warn('Profile load:', e));
+    
+    // Redirect immediately after successful auth
     redirectToDashboard();
     return { success: true };
   } catch (err) {
@@ -126,18 +130,20 @@ async function createUserProfile(userId, profileData) {
 // ============================================
 async function loadUserProfile(userId) {
   try {
-    const { data, error } = await sb
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
+    // Add 5 second timeout to profile load
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Profile timeout')), 5000)
+    );
+    const query = sb.from('profiles').select('*').eq('id', userId).single();
+    const { data, error } = await Promise.race([query, timeout]);
     if (error) throw error;
     window.ZaevoryqUser = data;
     return data;
   } catch (err) {
     console.warn('Profile load error:', err);
-    return null;
+    // Set basic user data even if profile fails
+    window.ZaevoryqUser = { id: userId, plan: 'free' };
+    return window.ZaevoryqUser;
   }
 }
 
@@ -145,24 +151,39 @@ async function loadUserProfile(userId) {
 // GET CURRENT USER
 // ============================================
 async function getCurrentUser() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
-    const profile = await loadUserProfile(session.user.id);
-    return profile || session.user;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user) {
+      const profile = await loadUserProfile(session.user.id);
+      return profile || session.user;
+    }
+    return null;
+  } catch(err) {
+    console.warn('Get current user error:', err);
+    return null;
   }
-  return null;
 }
 
 // ============================================
 // CHECK IF USER IS LOGGED IN
 // ============================================
 async function requireAuth() {
-  const user = await getCurrentUser();
-  if (!user) {
+  try {
+    // Timeout after 6 seconds
+    const timeout = new Promise((resolve) => 
+      setTimeout(() => resolve(null), 6000)
+    );
+    const user = await Promise.race([getCurrentUser(), timeout]);
+    if (!user) {
+      window.location.href = 'login.html';
+      return null;
+    }
+    return user;
+  } catch(err) {
+    console.warn('Auth check error:', err);
     window.location.href = 'login.html';
     return null;
   }
-  return user;
 }
 
 // ============================================

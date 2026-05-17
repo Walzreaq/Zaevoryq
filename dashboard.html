@@ -454,8 +454,14 @@ let currentUser   = null;
 // INIT
 // ============================================
 async function init() {
-  // Check auth
-  const user = await ZaevoryqAuth.requireAuth();
+  // Check auth with timeout
+  let user = null;
+  try {
+    user = await ZaevoryqAuth.requireAuth();
+  } catch(e) {
+    window.location.href = 'login.html';
+    return;
+  }
   if (!user) return;
   currentUser = user;
 

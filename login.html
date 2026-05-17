@@ -217,12 +217,31 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
     const email    = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     if (!email || !password) return showAuthError('Please fill in all fields');
+    
     const btn = document.getElementById('login-btn');
     btn.textContent = 'Signing in...';
     btn.disabled = true;
-    const result = await ZaevoryqAuth.signIn(email, password);
-    if (!result.success) {
-      showAuthError(result.message);
+
+    // Add timeout for entire login process
+    const loginTimeout = setTimeout(() => {
+      showAuthError('Connection is slow. Please try again.');
+      btn.textContent = 'Access Platform';
+      btn.disabled = false;
+    }, 10000);
+
+    try {
+      const result = await ZaevoryqAuth.signIn(email, password);
+      clearTimeout(loginTimeout);
+      if (!result.success) {
+        showAuthError(result.message);
+        btn.textContent = 'Access Platform';
+        btn.disabled = false;
+      } else {
+        btn.textContent = '✓ Redirecting...';
+      }
+    } catch(err) {
+      clearTimeout(loginTimeout);
+      showAuthError('Login failed. Please try again.');
       btn.textContent = 'Access Platform';
       btn.disabled = false;
     }
@@ -274,9 +293,14 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
     el.style.display = 'block';
   }
 
-  // Check if already logged in
-  ZaevoryqAuth.getCurrentUser().then(user => {
+  // Check if already logged in — with timeout so it doesnt hang
+  const authCheck = ZaevoryqAuth.getCurrentUser();
+  const authTimeout = new Promise(resolve => setTimeout(() => resolve(null), 3000));
+  Promise.race([authCheck, authTimeout]).then(user => {
     if (user) window.location.href = 'dashboard.html';
+  }).catch(() => {
+    // Stay on login page if check fails
+    console.warn('Auth check timed out');
   });
 </script>
 
