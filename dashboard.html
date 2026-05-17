@@ -159,7 +159,7 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
 .db-no-signal-sub{font-size:11px;font-family:'Space Mono',monospace;color:#1e3040;line-height:1.6;}
 
 /* ANALYZE BTN */
-.db-analyze-btn{width:100%;padding:12px;background:#c8a84b;border:none;border-radius:3px;font-size:14px;font-weight:700;font-family:'Rajdhani',sans-serif;letter-spacing:0.14em;text-transform:uppercase;color:#020408;cursor:pointer;transition:all 0.2s;margin-top:4px;}
+.db-analyze-btn{display:none;}
 .db-analyze-btn:hover{background:#d4b85a;}
 .db-analyze-btn:disabled{background:#2a3a4a;color:#1e3040;cursor:not-allowed;}
 
@@ -260,17 +260,19 @@ body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;min-heig
       </div>
     </div>
 
-    <!-- MODE SELECTOR + ANALYZE -->
+    <!-- MODE SELECTOR — AUTO ANALYZE -->
     <div class="db-panel">
-      <div class="db-panel-title">Trading Mode</div>
+      <div class="db-panel-title">Trading Mode
+        <span id="ai-status" style="font-size:10px;font-family:'Space Mono',monospace;color:#00ff6a;letter-spacing:0.1em;margin-left:8px;font-weight:400;">● ANALYZING...</span>
+      </div>
       <div class="db-mode-row">
         <button class="db-mode-btn" onclick="setMode('scalping',this)">⚡ Scalping</button>
         <button class="db-mode-btn" onclick="setMode('intraday',this)">📊 Intraday</button>
         <button class="db-mode-btn active" onclick="setMode('swing',this)">🎯 Swing</button>
       </div>
-      <button class="db-analyze-btn" id="analyze-btn" onclick="runAnalysis()">
-        🔍 Analyze Market
-      </button>
+      <div id="analyze-status" style="background:#020408;border:1px solid #0d1820;border-radius:3px;padding:8px 12px;font-size:11px;font-family:'Space Mono',monospace;color:#3a4a5a;text-align:center;letter-spacing:0.06em;">
+        AI is scanning market conditions...
+      </div>
     </div>
 
     <!-- SIGNAL CARD -->
@@ -479,6 +481,9 @@ async function init() {
 
   // Auto refresh prices every 30 seconds
   setInterval(refreshPrice, 30000);
+
+  // AUTO START ANALYSIS immediately on load
+  setTimeout(() => runAnalysis(), 1000);
 }
 
 // ============================================
@@ -506,7 +511,7 @@ function switchMarket(market, btn) {
     updatePrice(pairs[0]);
   }
 
-  // Reset signal
+  // Auto analyze new market
   resetSignal();
 }
 
@@ -556,18 +561,30 @@ function setTF(btn) {
 }
 
 // ============================================
-// RUN ANALYSIS
+// RUN ANALYSIS — AUTO
 // ============================================
 async function runAnalysis() {
-  const btn = document.getElementById('analyze-btn');
-  btn.textContent = '⏳ Analyzing...';
-  btn.disabled    = true;
+  // Update status
+  const statusEl = document.getElementById('analyze-status');
+  const aiStatus = document.getElementById('ai-status');
+  if(statusEl) statusEl.textContent = '⏳ Scanning ' + currentPair + ' across all timeframes...';
+  if(aiStatus) { aiStatus.textContent = '● ANALYZING...'; aiStatus.style.color = '#c8a84b'; }
+
+  // Show signal panel loading state
+  document.getElementById('signal-content').innerHTML = `
+    <div class="db-no-signal">
+      <div style="font-size:32px;margin-bottom:14px;animation:spin 1s linear infinite;display:inline-block;">⚙️</div>
+      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+      <div class="db-no-signal-title">AI Analyzing ${currentPair}</div>
+      <div class="db-no-signal-sub">Scanning W1 → D1 → H4 → H1 → M15 → M5 → M1<br>Checking supply/demand zones...<br>Calculating confidence score...</div>
+    </div>
+  `;
 
   // Show analysis panels
   document.getElementById('analysis-panels').style.display = 'grid';
 
-  // Simulate AI analysis (in production this uses real data)
-  await new Promise(r => setTimeout(r, 2000));
+  // Simulate AI analysis
+  await new Promise(r => setTimeout(r, 2500));
 
   // Generate demo signal based on pair
   const signals = {
@@ -586,8 +603,16 @@ async function runAnalysis() {
   if (sig) renderSignal(sig);
   else renderNoSignal();
 
-  btn.textContent = '🔍 Re-Analyze';
-  btn.disabled    = false;
+  // Update status to complete
+  if(statusEl) statusEl.textContent = '✅ Analysis complete — signal generated for ' + currentPair;
+  if(aiStatus) { aiStatus.textContent = '● LIVE'; aiStatus.style.color = '#00ff6a'; }
+
+  // Schedule next auto-refresh every 5 minutes
+  clearTimeout(window.analysisTimer);
+  window.analysisTimer = setTimeout(() => {
+    if(statusEl) statusEl.textContent = '🔄 Auto re-analyzing ' + currentPair + '...';
+    runAnalysis();
+  }, 5 * 60 * 1000);
 }
 
 // ============================================
@@ -697,13 +722,16 @@ function renderNoSignal() {
 function resetSignal() {
   document.getElementById('signal-content').innerHTML = `
     <div class="db-no-signal">
-      <div class="db-no-signal-icon">🎯</div>
-      <div class="db-no-signal-title">Ready to Analyze</div>
-      <div class="db-no-signal-sub">Click "Analyze Market" to generate<br>an AI signal for ${currentPair}</div>
+      <div class="db-no-signal-icon">⏳</div>
+      <div class="db-no-signal-title">Switching to ${currentPair}</div>
+      <div class="db-no-signal-sub">AI is analyzing market conditions...</div>
     </div>
   `;
   document.getElementById('analysis-panels').style.display = 'none';
-  document.getElementById('analyze-btn').textContent = '🔍 Analyze Market';
+  // Clear previous timer
+  clearTimeout(window.analysisTimer);
+  // Auto analyze after short delay
+  setTimeout(() => runAnalysis(), 800);
 }
 
 // ============================================
