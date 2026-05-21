@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZAEVORYQ AI — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Lightweight Candlestick Chart -->
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:#020408;font-family:'Rajdhani',sans-serif;color:#c8d6e8;}
+
+/* NAV */
+.db-nav{background:rgba(2,6,14,0.98);border-bottom:1px solid #c8a84b30;padding:0 16px;display:flex;align-items:center;height:48px;position:sticky;top:0;z-index:100;gap:6px;}
+.db-logo{display:flex;align-items:center;gap:8px;text-decoration:none;margin-right:12px;}
+.db-logo img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
+.db-brand{font-size:12px;font-weight:700;color:#c8a84b;letter-spacing:0.18em;font-family:'Space Mono',monospace;}
+.db-brand span{color:#fff;}
+.db-market-tabs{display:flex;gap:2px;}
+.db-mtab{padding:4px 12px;font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;border-radius:3px;cursor:pointer;border:none;background:transparent;color:#3a4a5a;letter-spacing:0.08em;transition:all 0.2s;text-transform:uppercase;}
+.db-mtab:hover{color:#c8a84b;}
+.db-mtab.active{background:rgba(200,168,75,0.1);color:#c8a84b;border:1px solid #c8a84b40;}
+.db-nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.db-live{background:rgba(0,255,106,0.08);border:1px solid rgba(0,255,106,0.3);color:#00ff6a;font-size:9px;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:2px;display:flex;align-items:center;gap:4px;letter-spacing:0.1em;}
+.db-live-dot{width:5px;height:5px;border-radius:50%;background:#00ff6a;box-shadow:0 0 5px #00ff6a;animation:blink 1.4s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.db-clock{font-family:'Space Mono',monospace;font-size:9px;color:#3a4a5a;}
+.db-nav-btn{padding:4px 10px;background:transparent;border:1px solid #c8a84b30;border-radius:3px;font-size:10px;font-family:'Space Mono',monospace;color:#c8a84b;letter-spacing:0.08em;cursor:pointer;}
+.db-nav-btn:hover{background:rgba(200,168,75,0.06);}
+
+/* PAIR BAR */
+.db-subbar{background:rgba(2,6,14,0.95);border-bottom:1px solid #c8a84b15;padding:0 16px;display:flex;align-items:center;gap:4px;height:34px;overflow-x:auto;scrollbar-width:none;}
+.db-subbar::-webkit-scrollbar{display:none;}
+.db-pair{padding:2px 10px;font-size:10px;font-family:'Space Mono',monospace;border-radius:2px;cursor:pointer;border:1px solid #0a1520;background:transparent;color:#3a4a5a;transition:all 0.15s;white-space:nowrap;letter-spacing:0.05em;}
+.db-pair:hover{border-color:#c8a84b30;color:#c8a84b;}
+.db-pair.active{background:rgba(200,168,75,0.08);border-color:#c8a84b50;color:#c8a84b;}
+
+/* MAIN LAYOUT — 3 COLUMNS */
+.db-main{display:grid;grid-template-columns:1fr 1fr 260px;height:calc(100vh - 82px);gap:0;overflow:hidden;}
+
+/* LEFT — CHART */
+.db-col-left{display:flex;flex-direction:column;border-right:1px solid #c8a84b15;overflow:hidden;}
+.db-chart-top{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid #0d1820;}
+.db-price-big{font-size:22px;font-weight:700;font-family:'Space Mono',monospace;color:#ffffff;}
+.db-price-chg{font-size:11px;font-family:'Space Mono',monospace;margin-left:8px;}
+.db-price-chg.pos{color:#00ff6a;}
+.db-price-chg.neg{color:#ff4466;}
+.db-chart-controls{display:flex;align-items:center;gap:6px;}
+.db-tf-btn{padding:2px 8px;font-size:9px;font-family:'Space Mono',monospace;border-radius:2px;cursor:pointer;border:1px solid #0d1820;background:transparent;color:#3a4a5a;letter-spacing:0.05em;transition:all 0.15s;}
+.db-tf-btn:hover{color:#c8a84b;border-color:#c8a84b30;}
+.db-tf-btn.active{background:rgba(200,168,75,0.1);border-color:#c8a84b50;color:#c8a84b;}
+.db-chart-type-btn{padding:2px 8px;font-size:9px;font-family:'Space Mono',monospace;border-radius:2px;cursor:pointer;border:1px solid #0d1820;background:transparent;color:#3a4a5a;letter-spacing:0.05em;transition:all 0.15s;}
+.db-chart-type-btn.active{background:rgba(200,168,75,0.1);border-color:#c8a84b50;color:#c8a84b;}
+.db-chart-wrap{flex:1;min-height:0;position:relative;}
+#chart-container{width:100%;height:100%;}
+
+/* MIDDLE — SIGNAL + MODE */
+.db-col-mid{display:flex;flex-direction:column;border-right:1px solid #c8a84b15;overflow:hidden;}
+.db-mid-top{padding:8px 12px;border-bottom:1px solid #0d1820;flex-shrink:0;}
+.db-mode-row{display:flex;gap:4px;}
+.db-mode-btn{flex:1;padding:5px;font-size:11px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border:1px solid #0d1820;border-radius:3px;cursor:pointer;background:transparent;color:#3a4a5a;transition:all 0.2s;}
+.db-mode-btn:hover{color:#c8a84b;border-color:#c8a84b30;}
+.db-mode-btn.active{background:rgba(200,168,75,0.1);border-color:#c8a84b50;color:#c8a84b;}
+.db-ai-status{font-size:10px;font-family:'Space Mono',monospace;margin-top:6px;letter-spacing:0.06em;}
+.db-signal-body{flex:1;overflow-y:auto;padding:10px 12px;}
+.db-signal-body::-webkit-scrollbar{width:3px;}
+.db-signal-body::-webkit-scrollbar-thumb{background:#c8a84b30;border-radius:2px;}
+
+/* SIGNAL CARD ELEMENTS */
+.db-sig-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.db-risk-lbl{font-size:11px;font-weight:700;font-family:'Space Mono',monospace;letter-spacing:0.08em;}
+.db-risk-lbl.high{color:#ff4466;}
+.db-risk-lbl.medium{color:#c8a84b;}
+.db-risk-lbl.low{color:#00ff6a;}
+.db-risk-lbl.elite{color:#c8a84b;text-shadow:0 0 10px #c8a84b60;}
+.db-status-pill{font-size:10px;font-family:'Space Mono',monospace;padding:2px 8px;border-radius:2px;}
+.s-active{color:#00ff6a;border:1px solid #00ff6a40;background:rgba(0,255,106,0.06);}
+.s-wait{color:#ffffff;border:1px solid #ffffff30;background:rgba(255,255,255,0.04);}
+.s-tp{color:#3b82f6;border:1px solid #3b82f640;background:rgba(59,130,246,0.06);}
+.s-be{color:#c8a84b;border:1px solid #c8a84b40;background:rgba(200,168,75,0.06);}
+.s-sl{color:#ff4466;border:1px solid #ff446640;background:rgba(255,68,102,0.06);}
+
+.db-sig-name{font-size:17px;font-weight:700;color:#ffffff;letter-spacing:0.06em;margin-bottom:2px;}
+.db-sig-conf{font-size:11px;font-family:'Space Mono',monospace;color:#c8a84b;margin-bottom:10px;}
+
+/* SIGNAL DATA GRID — compact 2x2 */
+.db-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;}
+.db-data-item{background:#020408;border:1px solid #0d1820;border-radius:3px;padding:7px 9px;}
+.db-data-lbl{font-size:8px;font-family:'Space Mono',monospace;color:#3a4a5a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;}
+.db-data-val{font-size:13px;font-weight:700;font-family:'Space Mono',monospace;}
+.v-entry{color:#ffffff;}
+.v-sl{color:#ff4466;}
+.v-tp{color:#3b82f6;}
+.v-be{color:#c8a84b;}
+.v-na{color:#3a4a5a;font-size:11px;}
+.v-struck{text-decoration:line-through;opacity:0.35;}
+
+/* TP ROW — 3 columns */
+.db-tp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:6px;}
+
+/* MODE + TIMEFRAME TAG */
+.db-tags{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.db-tag{font-size:9px;font-family:'Space Mono',monospace;color:#3a4a5a;background:#020408;border:1px solid #0d1820;padding:2px 7px;border-radius:2px;letter-spacing:0.04em;}
+
+/* AI REASON */
+.db-reason-box{background:#020408;border:1px solid #0d1820;border-radius:3px;padding:8px 10px;margin-bottom:6px;}
+.db-reason-lbl{font-size:8px;font-family:'Space Mono',monospace;color:#c8a84b;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;}
+.db-reason-txt{font-size:11px;color:#dde8f0;line-height:1.6;}
+.db-reason-lock{font-size:11px;color:#3a4a5a;font-family:'Space Mono',monospace;line-height:1.5;}
+
+/* ALERT/WARN BOXES */
+.db-alert{background:rgba(200,168,75,0.05);border:1px solid #c8a84b30;border-radius:3px;padding:7px 10px;font-size:10px;font-family:'Space Mono',monospace;color:#c8a84b;line-height:1.5;margin-bottom:6px;}
+.db-warn{background:rgba(255,68,102,0.05);border:1px solid #ff446630;border-radius:3px;padding:7px 10px;font-size:10px;font-family:'Space Mono',monospace;color:#ff9aaa;line-height:1.5;margin-bottom:6px;}
+
+/* ANALYSIS PANELS inside mid column */
+.db-analysis-wrap{padding:0 12px 10px;}
+.db-an-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.db-an-panel{background:#010305;border:1px solid #0d1820;border-radius:3px;padding:8px 10px;}
+.db-an-title{font-size:8px;font-weight:700;color:#c8a84b;letter-spacing:0.14em;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:7px;}
+.db-an-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #050d18;}
+.db-an-row:last-child{border-bottom:none;}
+.db-an-name{font-size:11px;color:#8a9ab0;}
+.db-an-badge{font-size:9px;font-family:'Space Mono',monospace;padding:1px 6px;border-radius:2px;}
+.b-bull{background:rgba(0,255,106,0.08);color:#00ff6a;border:1px solid rgba(0,255,106,0.2);}
+.b-bear{background:rgba(255,68,102,0.08);color:#ff4466;border:1px solid rgba(255,68,102,0.2);}
+.b-neu{background:rgba(200,168,75,0.07);color:#c8a84b;border:1px solid rgba(200,168,75,0.18);}
+
+/* NO SIGNAL */
+.db-no-sig{text-align:center;padding:30px 16px;}
+.db-no-sig-icon{font-size:28px;margin-bottom:10px;opacity:0.4;}
+.db-no-sig-title{font-size:12px;font-weight:700;color:#3a4a5a;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;}
+.db-no-sig-sub{font-size:10px;font-family:'Space Mono',monospace;color:#1e3040;line-height:1.6;}
+
+/* RIGHT COLUMN */
+.db-col-right{display:flex;flex-direction:column;overflow-y:auto;}
+.db-col-right::-webkit-scrollbar{width:3px;}
+.db-col-right::-webkit-scrollbar-thumb{background:#c8a84b20;border-radius:2px;}
+.db-r-sec{border-bottom:1px solid #c8a84b10;padding:10px 12px;}
+.db-r-title{font-size:9px;font-weight:700;color:#c8a84b;letter-spacing:0.16em;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:8px;text-shadow:0 0 8px #c8a84b30;}
+.db-ni{padding:5px 0;border-bottom:1px solid #050d18;}
+.db-ni:last-child{border-bottom:none;}
+.db-ni-time{font-size:9px;font-family:'Space Mono',monospace;color:#3a4a5a;margin-bottom:1px;}
+.db-ni-txt{font-size:11px;color:#dde8f0;line-height:1.3;font-weight:500;}
+.db-ni-imp{font-size:8px;padding:1px 6px;border-radius:2px;display:inline-block;margin-top:2px;font-family:'Space Mono',monospace;}
+.imp-h{background:rgba(255,68,102,0.1);color:#ff4466;border:1px solid rgba(255,68,102,0.2);}
+.imp-m{background:rgba(200,168,75,0.07);color:#c8a84b;border:1px solid rgba(200,168,75,0.17);}
+.db-geo{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #050d18;}
+.db-geo:last-child{border-bottom:none;}
+.db-geo-ico{font-size:13px;flex-shrink:0;margin-top:1px;}
+.db-geo-txt{font-size:11px;color:#dde8f0;line-height:1.3;flex:1;font-weight:500;}
+.db-geo-tag{font-size:9px;color:#3a4a5a;font-family:'Space Mono',monospace;margin-top:1px;letter-spacing:0.04em;}
+.db-lb{background:#020408;border-radius:3px;padding:7px 9px;margin-bottom:5px;border:1px solid #0d1820;}
+.db-lb-lbl{font-size:9px;color:#3a4a5a;font-family:'Space Mono',monospace;letter-spacing:0.05em;margin-bottom:3px;}
+.db-lb-track{background:#050d18;border-radius:1px;height:2px;overflow:hidden;}
+.db-lb-fill{height:100%;border-radius:1px;background:linear-gradient(90deg,#c8a84b,#d4b85a);}
+.db-lb-stat{display:flex;justify-content:space-between;font-size:9px;margin-top:2px;font-family:'Space Mono',monospace;}
+.db-lb-stat span:first-child{color:#3a4a5a;}
+.db-lb-stat span:last-child{color:#c8a84b;}
+.db-notif-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #050d18;}
+.db-notif-row:last-child{border-bottom:none;}
+.db-notif-lbl{font-size:11px;color:#dde8f0;font-weight:500;}
+.db-notif-sub{font-size:9px;color:#3a4a5a;font-family:'Space Mono',monospace;}
+.db-toggle{width:30px;height:16px;border-radius:8px;cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0;}
+.db-toggle.on{background:#c8a84b;}
+.db-toggle.off{background:#1e3040;}
+.db-toggle-dot{width:12px;height:12px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.2s;}
+.db-toggle.on .db-toggle-dot{left:16px;}
+.db-toggle.off .db-toggle-dot{left:2px;}
+</style>
+</head>
+<body>
+
+<nav class="db-nav">
+  <a class="db-logo" href="index.html">
+    <img src="data:image/png;base64,LOGO_PLACEHOLDER" alt="Z">
+    <div class="db-brand">ZAEVORYQ<span> AI</span></div>
+  </a>
+  <div class="db-market-tabs">
+    <button class="db-mtab active" onclick="switchMarket('forex',this)">FOREX</button>
+    <button class="db-mtab" onclick="switchMarket('metals',this)">METALS</button>
+    <button class="db-mtab" onclick="switchMarket('indices',this)">INDICES</button>
+    <button class="db-mtab" onclick="switchMarket('crypto',this)">CRYPTO</button>
+  </div>
+  <div class="db-nav-right">
+    <div class="db-live"><span class="db-live-dot"></span>LIVE</div>
+    <div class="db-clock" id="db-clock">--:-- UTC</div>
+    <button class="db-nav-btn" onclick="window.location.href='history.html'">History</button>
+    <button class="db-nav-btn" onclick="signOutUser()">Sign Out</button>
+  </div>
+</nav>
+
+<div class="db-subbar" id="db-subbar">
+  <button class="db-pair active" data-pair="EUR/USD" onclick="selectPair(this)">EUR/USD</button>
+  <button class="db-pair" data-pair="GBP/USD" onclick="selectPair(this)">GBP/USD</button>
+  <button class="db-pair" data-pair="USD/JPY" onclick="selectPair(this)">USD/JPY</button>
+</div>
+
+<div class="db-main">
+
+  <!-- LEFT — LIVE CHART -->
+  <div class="db-col-left">
+    <div class="db-chart-top">
+      <div style="display:flex;align-items:baseline;gap:0;">
+        <div class="db-price-big" id="live-price">1.0834</div>
+        <div class="db-price-chg pos" id="price-chg">+0.0042</div>
+      </div>
+      <div class="db-chart-controls">
+        <button class="db-chart-type-btn active" id="btn-candle" onclick="setChartType('candle',this)">🕯 Candle</button>
+        <button class="db-chart-type-btn" id="btn-line" onclick="setChartType('line',this)">📈 Line</button>
+        <div style="width:1px;height:14px;background:#0d1820;margin:0 2px;"></div>
+        <button class="db-tf-btn" onclick="setTF('M15',this)">M15</button>
+        <button class="db-tf-btn" onclick="setTF('H1',this)">H1</button>
+        <button class="db-tf-btn active" onclick="setTF('H4',this)">H4</button>
+        <button class="db-tf-btn" onclick="setTF('D1',this)">D1</button>
+      </div>
+    </div>
+    <div class="db-chart-wrap">
+      <div id="chart-container"></div>
+    </div>
+  </div>
+
+  <!-- MIDDLE — SIGNAL + ANALYSIS -->
+  <div class="db-col-mid">
+    <div class="db-mid-top">
+      <div class="db-mode-row">
+        <button class="db-mode-btn" onclick="setMode('scalping',this)">⚡ Scalp</button>
+        <button class="db-mode-btn" onclick="setMode('intraday',this)">📊 Intraday</button>
+        <button class="db-mode-btn active" onclick="setMode('swing',this)">🎯 Swing</button>
+      </div>
+      <div class="db-ai-status" id="ai-status" style="color:#c8a84b;">⏳ Analyzing market...</div>
+    </div>
+    <div class="db-signal-body" id="signal-body">
+      <div class="db-no-sig">
+        <div class="db-no-sig-icon">⚙️</div>
+        <div class="db-no-sig-title">AI Scanning...</div>
+        <div class="db-no-sig-sub">Analyzing all timeframes<br>W1 → D1 → H4 → H1 → M15</div>
+      </div>
+    </div>
+    <div class="db-analysis-wrap" id="analysis-wrap" style="display:none;">
+      <div class="db-an-grid">
+        <div class="db-an-panel">
+          <div class="db-an-title">Technical</div>
+          <div class="db-an-row"><span class="db-an-name">Structure</span><span class="db-an-badge b-bull" id="an-structure">Bullish BOS</span></div>
+          <div class="db-an-row"><span class="db-an-name">S&D Zone</span><span class="db-an-badge b-bull" id="an-sd">In Demand</span></div>
+          <div class="db-an-row"><span class="db-an-name">S/R Level</span><span class="db-an-badge b-neu" id="an-sr">Near Res.</span></div>
+          <div class="db-an-row"><span class="db-an-name">Pattern</span><span class="db-an-badge b-bull" id="an-pattern">Bull Flag</span></div>
+          <div class="db-an-row"><span class="db-an-name">SMC/OB</span><span class="db-an-badge b-bull" id="an-smc">Bullish OB</span></div>
+          <div class="db-an-row"><span class="db-an-name">Trend</span><span class="db-an-badge b-bull" id="an-trend">Uptrend</span></div>
+        </div>
+        <div class="db-an-panel">
+          <div class="db-an-title">Fundamental</div>
+          <div class="db-an-row"><span class="db-an-name">News Today</span><span class="db-an-badge b-bear" id="an-news">High Impact</span></div>
+          <div class="db-an-row"><span class="db-an-name">Sentiment</span><span class="db-an-badge b-bull" id="an-sent">Positive</span></div>
+          <div class="db-an-row"><span class="db-an-name">Fed Tone</span><span class="db-an-badge b-neu" id="an-fed">Dovish</span></div>
+          <div class="db-an-row"><span class="db-an-name">Geopolit.</span><span class="db-an-badge b-bear" id="an-geo">Risk-Off</span></div>
+          <div class="db-an-row"><span class="db-an-name">Oil/Comm.</span><span class="db-an-badge b-neu" id="an-oil">Neutral</span></div>
+          <div class="db-an-row"><span class="db-an-name">Bias</span><span class="db-an-badge b-bull" id="an-bias">Bullish</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT — NEWS + LEARNING -->
+  <div class="db-col-right">
+    <div class="db-r-sec">
+      <div class="db-r-title">📅 Forex Factory</div>
+      <div id="forex-news-container">
+        <div class="db-ni"><div class="db-ni-time">13:30 UTC — USD</div><div class="db-ni-txt">Non-Farm Payrolls</div><span class="db-ni-imp imp-h">HIGH</span></div>
+        <div class="db-ni"><div class="db-ni-time">15:00 UTC — EUR</div><div class="db-ni-txt">ECB Rate Decision</div><span class="db-ni-imp imp-h">HIGH</span></div>
+        <div class="db-ni"><div class="db-ni-time">17:00 UTC — GBP</div><div class="db-ni-txt">BOE Governor Speech</div><span class="db-ni-imp imp-m">MED</span></div>
+        <div class="db-ni"><div class="db-ni-time">23:50 UTC — JPY</div><div class="db-ni-txt">BOJ Policy Statement</div><span class="db-ni-imp imp-h">HIGH</span></div>
+      </div>
+    </div>
+    <div class="db-r-sec">
+      <div class="db-r-title">🌍 Geopolitical</div>
+      <div id="geo-news-container">
+        <div class="db-geo"><div class="db-geo-ico">🔥</div><div><div class="db-geo-txt">Iran-US tensions near Strait of Hormuz</div><div class="db-geo-tag">OIL · USD · RISK-OFF</div></div></div>
+        <div class="db-geo"><div class="db-geo-ico">🚢</div><div><div class="db-geo-txt">Red Sea shipping disruptions continue</div><div class="db-geo-tag">SHIPPING · EUR · GBP</div></div></div>
+        <div class="db-geo"><div class="db-geo-ico">🏦</div><div><div class="db-geo-txt">US-China trade talks stall</div><div class="db-geo-tag">TRADE · USD · JPY</div></div></div>
+      </div>
+    </div>
+    <div class="db-r-sec">
+      <div class="db-r-title">🧠 AI Learning</div>
+      <div class="db-lb"><div class="db-lb-lbl">EUR/USD</div><div class="db-lb-track"><div class="db-lb-fill" style="width:78%"></div></div><div class="db-lb-stat"><span>142 signals</span><span>78.3%</span></div></div>
+      <div class="db-lb"><div class="db-lb-lbl">XAU/USD</div><div class="db-lb-track"><div class="db-lb-fill" style="width:71%"></div></div><div class="db-lb-stat"><span>86 signals</span><span>71.4%</span></div></div>
+      <div class="db-lb"><div class="db-lb-lbl">GBP/USD</div><div class="db-lb-track"><div class="db-lb-fill" style="width:64%"></div></div><div class="db-lb-stat"><span>64 signals</span><span>64.1%</span></div></div>
+    </div>
+    <div class="db-r-sec" style="border-bottom:none;">
+      <div class="db-r-title">🔔 Alerts</div>
+      <div class="db-notif-row"><div><div class="db-notif-lbl">Signal Alerts</div><div class="db-notif-sub">New AI signals</div></div><div class="db-toggle on" onclick="toggleNotif(this)"><div class="db-toggle-dot"></div></div></div>
+      <div class="db-notif-row"><div><div class="db-notif-lbl">Status Updates</div><div class="db-notif-sub">TP1, TP2, SL, BE</div></div><div class="db-toggle on" onclick="toggleNotif(this)"><div class="db-toggle-dot"></div></div></div>
+      <div class="db-notif-row"><div><div class="db-notif-lbl">News Warnings</div><div class="db-notif-sub">1hr before news</div></div><div class="db-toggle on" onclick="toggleNotif(this)"><div class="db-toggle-dot"></div></div></div>
+      <div class="db-notif-row" id="standby-row" style="display:none;"><div><div class="db-notif-lbl">Standby Alerts</div><div class="db-notif-sub">5min early warning</div></div><div class="db-toggle on" onclick="toggleNotif(this)"><div class="db-toggle-dot"></div></div></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script src="news-fetcher.js"></script>
+<script src="alerts.js"></script>
+<script>
+
+// ============================================
+// CONFIG
+// ============================================
+const MARKET_PAIRS = {
+  forex:   ['EUR/USD','GBP/USD','USD/JPY'],
+  metals:  ['XAU/USD','XAG/USD'],
+  indices: ['NAS100','SPX500','USOIL'],
+  crypto:  ['BTC/USD'],
+};
+
+const PRICE_MAP = {
+  'EUR/USD':{p:'1.0834',c:'+0.0042',pos:true},
+  'GBP/USD':{p:'1.2718',c:'+0.0031',pos:true},
+  'USD/JPY':{p:'154.32',c:'-0.45',pos:false},
+  'XAU/USD':{p:'2342',c:'+8',pos:true},
+  'XAG/USD':{p:'27.34',c:'+0.12',pos:true},
+  'NAS100':{p:'17842',c:'+98',pos:true},
+  'SPX500':{p:'5182',c:'+18',pos:true},
+  'USOIL':{p:'78',c:'-1',pos:false},
+  'BTC/USD':{p:'62840',c:'+840',pos:true},
+};
+
+const SIGNALS = {
+  'EUR/USD':{type:'BUY',risk:'LOW RISK',conf:91,rr:'1:3',entry:'1.0834',sl:'1.0734',tp1:'1.0934',tp2:'1.1034',tp3:'1.1134',reasons:['D1 bullish structure confirmed','H4 demand zone holding','H1 momentum aligning upward']},
+  'GBP/USD':{type:'BUY LIMIT',risk:'MEDIUM RISK',conf:83,rr:'1:2.5',entry:'1.2700',sl:'1.2600',tp1:'1.2800',tp2:'1.2900',tp3:'1.3000',reasons:['H4 structure bullish','Price approaching demand zone','Waiting for pullback to 1.2700']},
+  'USD/JPY':{type:'SELL',risk:'LOW RISK',conf:88,rr:'1:3',entry:'154.32',sl:'156.32',tp1:'152.32',tp2:'150.32',tp3:'148.32',reasons:['D1 bearish structure','H4 supply zone rejection','BOJ policy hawkish lean']},
+  'XAU/USD':{type:'BUY',risk:'ELITE',conf:96,rr:'1:3',entry:'2342',sl:'2242',tp1:'2422',tp2:'2502',tp3:'2582',reasons:['W1 mega bullish structure','D1 demand zone strong','Geopolitical risk-off boosting gold']},
+  'XAG/USD':{type:'BUY LIMIT',risk:'MEDIUM RISK',conf:81,rr:'1:2.5',entry:'27.00',sl:'26.50',tp1:'27.50',tp2:'28.00',tp3:'28.50',reasons:['Following gold momentum','H4 demand zone at 27.00']},
+  'NAS100':{type:'BUY',risk:'LOW RISK',conf:89,rr:'1:3',entry:'17842',sl:'17342',tp1:'18342',tp2:'18842',tp3:'19342',reasons:['Strong tech sector momentum','H4 bullish flag pattern']},
+  'SPX500':{type:'BUY',risk:'MEDIUM RISK',conf:82,rr:'1:2.5',entry:'5182',sl:'4982',tp1:'5382',tp2:'5582',tp3:'5782',reasons:['D1 uptrend intact','H4 support holding']},
+  'USOIL':{type:'SELL',risk:'HIGH RISK',conf:73,rr:'1:2',entry:'78',sl:'82',tp1:'74',tp2:'70',tp3:null,reasons:['D1 downtrend continuing','Supply zone at 78']},
+  'BTC/USD':{type:'BUY',risk:'MEDIUM RISK',conf:84,rr:'1:2.5',entry:'62840',sl:'60840',tp1:'64840',tp2:'66840',tp3:'68840',reasons:['4H bullish structure','Institutional accumulation detected']},
+};
+
+let currentPair = 'EUR/USD';
+let currentMode = 'swing';
+let currentUser = null;
+let chartInstance = null;
+let candleSeries = null;
+let lineSeries = null;
+let chartType = 'candle';
+
+// ============================================
+// INIT
+// ============================================
+async function init() {
+  try {
+    currentUser = await ZaevoryqAuth.requireAuth();
+    if (!currentUser) return;
+  } catch(e) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  // Show standby for elite/admin
+  const isAdmin = currentUser.email === 'walzreaq@gmail.com';
+  if (currentUser.plan === 'elite' || isAdmin) {
+    document.getElementById('standby-row').style.display = 'flex';
+  }
+
+  // Request notifications
+  if (window.ZaevoryqAlerts) ZaevoryqAlerts.requestNotificationPermission();
+  if (window.ZaevoryqNews) ZaevoryqNews.startNewsEngine();
+
+  // Clock
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Init chart
+  initChart();
+
+  // Auto analyze
+  setTimeout(() => runAnalysis(), 800);
+  setInterval(() => runAnalysis(), 5 * 60 * 1000);
+}
+
+// ============================================
+// CHART
+// ============================================
+function initChart() {
+  const container = document.getElementById('chart-container');
+  if (!container || !window.LightweightCharts) return;
+
+  chartInstance = LightweightCharts.createChart(container, {
+    layout: { background: { color: '#010305' }, textColor: '#3a4a5a' },
+    grid: { vertLines: { color: '#0d1820' }, horzLines: { color: '#0d1820' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#0d1820' },
+    timeScale: { borderColor: '#0d1820', timeVisible: true, secondsVisible: false },
+    width: container.clientWidth,
+    height: container.clientHeight,
+  });
+
+  loadChartData();
+
+  // Resize observer
+  const ro = new ResizeObserver(() => {
+    if (chartInstance) {
+      chartInstance.resize(container.clientWidth, container.clientHeight);
+    }
+  });
+  ro.observe(container);
+}
+
+function generateCandles(basePrice, count = 80) {
+  const candles = [];
+  const now = Math.floor(Date.now() / 1000);
+  const interval = 4 * 60 * 60; // H4
+  let price = basePrice;
+  for (let i = count; i >= 0; i--) {
+    const time = now - i * interval;
+    const open = price;
+    const change = (Math.random() - 0.48) * basePrice * 0.004;
+    const close = open + change;
+    const high  = Math.max(open, close) + Math.random() * basePrice * 0.002;
+    const low   = Math.min(open, close) - Math.random() * basePrice * 0.002;
+    candles.push({ time, open: +open.toFixed(4), high: +high.toFixed(4), low: +low.toFixed(4), close: +close.toFixed(4) });
+    price = close;
+  }
+  return candles;
+}
+
+function loadChartData() {
+  if (!chartInstance) return;
+
+  // Remove old series
+  if (candleSeries) try { chartInstance.removeSeries(candleSeries); } catch(e){}
+  if (lineSeries)   try { chartInstance.removeSeries(lineSeries); }   catch(e){}
+
+  const pd = PRICE_MAP[currentPair];
+  const base = parseFloat(pd?.p || '1') * (0.995 + Math.random() * 0.01);
+  const candles = generateCandles(base);
+
+  if (chartType === 'candle') {
+    candleSeries = chartInstance.addCandlestickSeries({
+      upColor: '#00ff6a', downColor: '#ff4466',
+      borderUpColor: '#00ff6a', borderDownColor: '#ff4466',
+      wickUpColor: '#00ff6a', wickDownColor: '#ff4466',
+    });
+    candleSeries.setData(candles);
+    lineSeries = null;
+  } else {
+    lineSeries = chartInstance.addLineSeries({
+      color: '#c8a84b', lineWidth: 2,
+      lastValueVisible: true,
+      priceLineVisible: true,
+    });
+    lineSeries.setData(candles.map(c => ({ time: c.time, value: c.close })));
+    candleSeries = null;
+  }
+
+  chartInstance.timeScale().fitContent();
+}
+
+function setChartType(type, btn) {
+  chartType = type;
+  document.querySelectorAll('.db-chart-type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadChartData();
+}
+
+function setTF(tf, btn) {
+  document.querySelectorAll('.db-tf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadChartData();
+}
+
+// ============================================
+// MARKET + PAIR
+// ============================================
+function switchMarket(market, btn) {
+  document.querySelectorAll('.db-mtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const pairs = MARKET_PAIRS[market] || [];
+  const sub   = document.getElementById('db-subbar');
+  sub.innerHTML = '';
+  pairs.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'db-pair' + (i===0?' active':'');
+    b.textContent = p;
+    b.onclick = function(){ selectPair(this); };
+    sub.appendChild(b);
+  });
+  if (pairs[0]) { currentPair = pairs[0]; updatePrice(pairs[0]); }
+  setTimeout(() => runAnalysis(), 500);
+}
+
+function selectPair(btn) {
+  document.querySelectorAll('.db-pair').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPair = btn.textContent;
+  updatePrice(currentPair);
+  loadChartData();
+  setTimeout(() => runAnalysis(), 500);
+}
+
+function updatePrice(pair) {
+  const d = PRICE_MAP[pair];
+  if (!d) return;
+  document.getElementById('live-price').textContent = d.p;
+  const el = document.getElementById('price-chg');
+  el.textContent = (d.pos?'+':'')+d.c;
+  el.className = 'db-price-chg '+(d.pos?'pos':'neg');
+}
+
+// ============================================
+// MODE
+// ============================================
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('.db-mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  setTimeout(() => runAnalysis(), 500);
+}
+
+// ============================================
+// RUN ANALYSIS — AUTO
+// ============================================
+async function runAnalysis() {
+  const statusEl = document.getElementById('ai-status');
+  if(statusEl) { statusEl.textContent = '⏳ Scanning '+currentPair+'...'; statusEl.style.color='#c8a84b'; }
+
+  document.getElementById('signal-body').innerHTML = `
+    <div class="db-no-sig">
+      <div class="db-no-sig-icon" style="animation:spin 1s linear infinite;display:inline-block;">⚙️</div>
+      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+      <div class="db-no-sig-title">Analyzing ${currentPair}</div>
+      <div class="db-no-sig-sub">W1→D1→H4→H1→M15→M5→M1<br>Calculating confidence...</div>
+    </div>`;
+
+  await new Promise(r => setTimeout(r, 1800));
+
+  const sig = SIGNALS[currentPair];
+  if (sig) renderSignal(sig);
+  else renderNoSignal();
+
+  document.getElementById('analysis-wrap').style.display = 'block';
+  if(statusEl) { statusEl.textContent = '✅ Signal ready — '+currentPair; statusEl.style.color='#00ff6a'; }
+}
+
+// ============================================
+// RENDER SIGNAL
+// ============================================
+function renderSignal(sig) {
+  const riskClass = {'HIGH RISK':'high','MEDIUM RISK':'medium','LOW RISK':'low','ELITE':'elite'}[sig.risk]||'low';
+  const statusCls = sig.type.includes('LIMIT')?'s-wait':'s-active';
+  const statusTxt = sig.type.includes('LIMIT')?'⏳ Waiting':'🟢 Active';
+  const isHighRisk = sig.risk==='HIGH RISK';
+  const isAdmin = currentUser?.email==='walzreaq@gmail.com';
+  const canSeeReason = currentUser?.plan==='pro'||currentUser?.plan==='elite'||isAdmin;
+
+  document.getElementById('signal-body').innerHTML = `
+    <div class="db-sig-header">
+      <span class="db-risk-lbl ${riskClass}">🎯 ${sig.risk}</span>
+      <span class="db-status-pill ${statusCls}">${statusTxt}</span>
+    </div>
+    <div class="db-sig-name">${sig.type} ${currentPair}</div>
+    <div class="db-sig-conf">Confidence: ${sig.conf}% &nbsp;|&nbsp; RR: ${sig.rr}</div>
+
+    <div class="db-data-grid">
+      <div class="db-data-item">
+        <div class="db-data-lbl">Entry &nbsp; BE: <span style="color:#c8a84b;">N/A</span></div>
+        <div class="db-data-val v-entry">${sig.entry}</div>
+      </div>
+      <div class="db-data-item">
+        <div class="db-data-lbl">Stop Loss</div>
+        <div class="db-data-val v-sl">${sig.sl}</div>
+      </div>
+    </div>
+
+    <div class="db-tp-grid">
+      <div class="db-data-item"><div class="db-data-lbl">TP 1</div><div class="db-data-val v-tp">${sig.tp1}</div></div>
+      <div class="db-data-item"><div class="db-data-lbl">TP 2</div><div class="db-data-val v-tp">${sig.tp2}</div></div>
+      <div class="db-data-item"><div class="db-data-lbl">TP 3</div>${sig.tp3?`<div class="db-data-val v-tp">${sig.tp3}</div>`:`<div class="db-data-val v-na">N/A</div>`}</div>
+    </div>
+
+    <div class="db-tags">
+      <span class="db-tag">${currentMode.toUpperCase()}</span>
+      <span class="db-tag">${currentMode==='swing'?'H4 Entry | D1 Trend':currentMode==='intraday'?'M15 Entry | H4 Trend':'M1 Entry | M15 Trend'}</span>
+    </div>
+
+    ${sig.type.includes('LIMIT')?`<div class="db-alert">⏳ Limit order pending — waiting for price to reach ${sig.entry}</div>`:''}
+    ${isHighRisk?`<div class="db-warn">⚠️ HIGH RISK — Reduce position size. Trade at your own discretion.</div>`:''}
+
+    <div class="db-reason-box">
+      <div class="db-reason-lbl">AI Reasoning</div>
+      ${canSeeReason
+        ?`<div class="db-reason-txt">${sig.reasons.map(r=>'→ '+r).join('<br>')}</div>`
+        :`<div class="db-reason-lock">🔒 Upgrade to Pro or Elite to unlock AI reasoning</div>`}
+    </div>
+  `;
+
+  // Push alert
+  if (window.ZaevoryqAlerts) {
+    ZaevoryqAlerts.alertNewSignal({signal:sig.type,asset:currentPair,riskLevel:sig.risk,confidence:sig.conf,rr:sig.rr,entry:sig.entry,sl:sig.sl,tp1:sig.tp1});
+  }
+}
+
+function renderNoSignal() {
+  document.getElementById('signal-body').innerHTML = `
+    <div class="db-no-sig">
+      <div class="db-no-sig-icon">⚠️</div>
+      <div class="db-no-sig-title">No Signal</div>
+      <div class="db-no-sig-sub">Confidence below 70%<br>No trade recommended</div>
+    </div>`;
+}
+
+// ============================================
+// HELPERS
+// ============================================
+function toggleNotif(el) { el.classList.toggle('on'); el.classList.toggle('off'); }
+function signOutUser() { ZaevoryqAuth.signOut(); }
+function updateClock() {
+  const now = new Date();
+  document.getElementById('db-clock').textContent = now.toUTCString().slice(17,22)+' UTC';
+}
+
+// TradingView handles chart type switching internally
+
+// Start
+init();
+</script>
+
+<!-- TradingView Widget Script -->
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script>
+// TradingView symbol mapping
+const TV_SYMBOLS = {
+  'EUR/USD': 'FX:EURUSD',
+  'GBP/USD': 'FX:GBPUSD',
+  'USD/JPY': 'FX:USDJPY',
+  'XAU/USD': 'TVC:GOLD',
+  'XAG/USD': 'TVC:SILVER',
+  'NAS100':  'NASDAQ:NDX',
+  'SPX500':  'SP:SPX',
+  'USOIL':   'TVC:USOIL',
+  'BTC/USD': 'COINBASE:BTCUSD',
+};
+
+// TradingView timeframe mapping
+const TV_INTERVALS = {
+  'M1':'1','M5':'5','M15':'15','M30':'30',
+  'H1':'60','H4':'240','D1':'D','W1':'W','MN':'M'
+};
+
+let tvWidget = null;
+let currentTF = '240'; // Default H4
+
+function initTradingView(symbol, interval) {
+  const tvSymbol = TV_SYMBOLS[symbol] || 'FX:EURUSD';
+  
+  // Destroy existing widget
+  if (tvWidget) {
+    try { tvWidget.remove(); } catch(e) {}
+    document.getElementById('tradingview_chart').innerHTML = '';
+  }
+
+  tvWidget = new TradingView.widget({
+    container_id:    'tradingview_chart',
+    symbol:          tvSymbol,
+    interval:        interval || currentTF,
+    timezone:        'UTC',
+    theme:           'dark',
+    style:           '1', // Candlestick
+    locale:          'en',
+    toolbar_bg:      '#010305',
+    enable_publishing: false,
+    hide_top_toolbar:  false,
+    hide_legend:       false,
+    save_image:        false,
+    backgroundColor:   '#020408',
+    gridColor:         'rgba(200,168,75,0.06)',
+    hide_volume:       false,
+    withdateranges:    true,
+    allow_symbol_change: false,
+    studies: [
+      'RSI@tv-basicstudies',
+      'MACD@tv-basicstudies',
+    ],
+    overrides: {
+      'mainSeriesProperties.candleStyle.upColor':        '#00ff6a',
+      'mainSeriesProperties.candleStyle.downColor':      '#ff4466',
+      'mainSeriesProperties.candleStyle.borderUpColor':  '#00ff6a',
+      'mainSeriesProperties.candleStyle.borderDownColor':'#ff4466',
+      'mainSeriesProperties.candleStyle.wickUpColor':    '#00ff6a',
+      'mainSeriesProperties.candleStyle.wickDownColor':  '#ff4466',
+      'paneProperties.background':                       '#020408',
+      'paneProperties.backgroundType':                   'solid',
+      'paneProperties.gridLinesMode':                    'both',
+      'paneProperties.vertGridProperties.color':         'rgba(200,168,75,0.06)',
+      'paneProperties.horzGridProperties.color':         'rgba(200,168,75,0.06)',
+      'scalesProperties.lineColor':                      '#1e3040',
+      'scalesProperties.textColor':                      '#8a9ab0',
+    },
+    time_frames: [
+      { text:'1m',  resolution:'1',   description:'1 Minute' },
+      { text:'5m',  resolution:'5',   description:'5 Minutes' },
+      { text:'15m', resolution:'15',  description:'15 Minutes' },
+      { text:'30m', resolution:'30',  description:'30 Minutes' },
+      { text:'1h',  resolution:'60',  description:'1 Hour' },
+      { text:'4h',  resolution:'240', description:'4 Hours' },
+      { text:'1D',  resolution:'D',   description:'1 Day' },
+      { text:'1W',  resolution:'W',   description:'1 Week' },
+      { text:'1M',  resolution:'M',   description:'1 Month' },
+    ],
+    loading_screen: { backgroundColor:'#020408', foregroundColor:'#c8a84b' },
+    width:  '100%',
+    height: '100%',
+    autosize: true,
+  });
+}
+
+// Update chart when pair changes
+function updateTVChart(pair, interval) {
+  const tvSymbol = TV_SYMBOLS[pair] || 'FX:EURUSD';
+  currentTF = interval || currentTF;
+
+  if (tvWidget && tvWidget.chart) {
+    try {
+      tvWidget.chart().setSymbol(tvSymbol);
+      tvWidget.chart().setResolution(currentTF);
+    } catch(e) {
+      // Reinit if update fails
+      initTradingView(pair, currentTF);
+    }
+  } else {
+    initTradingView(pair, currentTF);
+  }
+}
+</script>
+</body>
+</html>    <!-- TRADINGVIEW CHART PANEL -->
+    <div style="background:#010305;border:1px solid #0d1820;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;min-height:320px;">
+      <!-- Header row with price + timeframes -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #0d1820;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:11px;font-weight:700;color:#c8a84b;letter-spacing:0.14em;font-family:'Space Mono',monospace;" id="chart-pair-label">XAU/USD</span>
+          <span style="font-size:18px;font-weight:700;font-family:'Space Mono',monospace;color:#ffffff;" id="live-price">--</span>
+          <span style="font-size:11px;font-family:'Space Mono',monospace;" id="price-change"></span>
+        </div>
+        <div style="display:flex;gap:3px;">
+          <button class="db-tf-btn" onclick="setTF('1',this)">M1</button>
+          <button class="db-tf-btn" onclick="setTF('5',this)">M5</button>
+          <button class="db-tf-btn" onclick="setTF('15',this)">M15</button>
+          <button class="db-tf-btn" onclick="setTF('30',this)">M30</button>
+          <button class="db-tf-btn" onclick="setTF('60',this)">H1</button>
+          <button class="db-tf-btn active" onclick="setTF('240',this)">H4</button>
+          <button class="db-tf-btn" onclick="setTF('D',this)">D1</button>
+          <button class="db-tf-btn" onclick="setTF('W',this)">W1</button>
+          <button class="db-tf-btn" onclick="setTF('M',this)">MN</button>
+        </div>
+      </div>
+      <!-- TradingView Advanced Chart -->
+      <div style="flex:1;min-height:300px;" id="tv-chart-wrap">
+        <div class="tradingview-widget-container" style="height:100%;width:100%;">
+          <div id="tradingview_advanced_chart" style="height:100%;width:100%;"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+        </div>
+      </div>
+    </div>
+
