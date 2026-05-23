@@ -617,10 +617,7 @@ function renderNoSignal() {
 // ============================================
 function toggleNotif(el) { el.classList.toggle('on'); el.classList.toggle('off'); }
 function signOutUser() { ZaevoryqAuth.signOut(); }
-function updateClock() {
-  const now = new Date();
-  document.getElementById('db-clock').textContent = now.toUTCString().slice(17,22)+' UTC';
-}
+// Clock handled by timezone system
 
 // TradingView handles chart type switching internally
 
@@ -735,6 +732,149 @@ function updateTVChart(pair, interval) {
   }
 }
 </script>
+
+<!-- TIMEZONE PICKER -->
+<div id="tz-overlay" onclick="if(event.target===this)closeTZPicker()" style="display:none;position:fixed;inset:0;background:rgba(2,4,8,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9999;align-items:flex-start;justify-content:flex-end;padding:58px 16px 0;">
+  <div style="background:#0a0e16;border:1px solid #c8a84b50;border-radius:6px;padding:20px;width:270px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#c8a84b70,transparent);"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#c8a84b;letter-spacing:0.16em;font-family:'Space Mono',monospace;text-transform:uppercase;text-shadow:0 0 10px #c8a84b50;">🕐 Time Zone</div>
+      <button onclick="closeTZPicker()" style="background:rgba(200,168,75,0.08);border:1px solid #c8a84b30;border-radius:3px;color:#c8a84b;font-size:14px;cursor:pointer;width:24px;height:24px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+
+    <!-- FORMAT TOGGLE -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:9px;font-family:'Space Mono',monospace;color:#8a9ab0;letter-spacing:0.12em;margin-bottom:6px;text-transform:uppercase;">Display Format</div>
+      <div style="display:flex;gap:6px;">
+        <button id="fmt-12h" onclick="setTimeFormat('12h')" style="flex:1;padding:7px;font-size:11px;font-family:'Space Mono',monospace;border-radius:3px;cursor:pointer;background:rgba(200,168,75,0.12);border:1px solid #c8a84b50;color:#c8a84b;letter-spacing:0.08em;transition:all 0.15s;">12H (AM/PM)</button>
+        <button id="fmt-24h" onclick="setTimeFormat('24h')" style="flex:1;padding:7px;font-size:11px;font-family:'Space Mono',monospace;border-radius:3px;cursor:pointer;background:transparent;border:1px solid #0d1820;color:#8a9ab0;letter-spacing:0.08em;transition:all 0.15s;">24H</button>
+      </div>
+    </div>
+
+    <!-- TIMEZONE LIST -->
+    <div style="font-size:9px;font-family:'Space Mono',monospace;color:#8a9ab0;letter-spacing:0.12em;margin-bottom:8px;text-transform:uppercase;">Select Region</div>
+    <div style="display:flex;flex-direction:column;gap:3px;max-height:280px;overflow-y:auto;" id="tz-list"></div>
+  </div>
+</div>
+
+<script>
+const TIMEZONES = [
+  { label:'Brunei (BNT)',          offset:8,   abbr:'BNT',  flag:'🇧🇳' },
+  { label:'UTC / GMT',             offset:0,   abbr:'UTC',  flag:'🌐' },
+  { label:'London (GMT/BST)',      offset:1,   abbr:'BST',  flag:'🇬🇧' },
+  { label:'New York (EDT)',        offset:-4,  abbr:'EDT',  flag:'🇺🇸' },
+  { label:'Chicago (CDT)',         offset:-5,  abbr:'CDT',  flag:'🇺🇸' },
+  { label:'Los Angeles (PDT)',     offset:-7,  abbr:'PDT',  flag:'🇺🇸' },
+  { label:'São Paulo (BRT)',       offset:-3,  abbr:'BRT',  flag:'🇧🇷' },
+  { label:'Frankfurt (CEST)',      offset:2,   abbr:'CEST', flag:'🇩🇪' },
+  { label:'Dubai (GST)',           offset:4,   abbr:'GST',  flag:'🇦🇪' },
+  { label:'Mumbai (IST)',          offset:5.5, abbr:'IST',  flag:'🇮🇳' },
+  { label:'Singapore (SGT)',       offset:8,   abbr:'SGT',  flag:'🇸🇬' },
+  { label:'Kuala Lumpur (MYT)',    offset:8,   abbr:'MYT',  flag:'🇲🇾' },
+  { label:'Jakarta (WIB)',         offset:7,   abbr:'WIB',  flag:'🇮🇩' },
+  { label:'Manila (PHT)',          offset:8,   abbr:'PHT',  flag:'🇵🇭' },
+  { label:'Tokyo (JST)',           offset:9,   abbr:'JST',  flag:'🇯🇵' },
+  { label:'Sydney (AEST)',         offset:10,  abbr:'AEST', flag:'🇦🇺' },
+  { label:'Auckland (NZST)',       offset:12,  abbr:'NZST', flag:'🇳🇿' },
+];
+
+// Load saved prefs
+let selectedTZ = TIMEZONES[0];
+let timeFormat = '12h';
+try {
+  const s = localStorage.getItem('zv_tz');
+  const f = localStorage.getItem('zv_fmt');
+  if (s) selectedTZ = JSON.parse(s);
+  if (f) timeFormat = f;
+} catch(e) {}
+
+function openTZPicker() {
+  document.getElementById('tz-overlay').style.display = 'flex';
+  renderTZList();
+  updateFormatBtns();
+}
+
+function closeTZPicker() {
+  document.getElementById('tz-overlay').style.display = 'none';
+}
+
+function renderTZList() {
+  document.getElementById('tz-list').innerHTML = TIMEZONES.map((tz,i) => `
+    <button onclick="selectTZ(${i})" style="
+      display:flex;align-items:center;gap:8px;
+      padding:8px 10px;border-radius:3px;cursor:pointer;width:100%;text-align:left;
+      background:${tz.abbr===selectedTZ.abbr?'rgba(200,168,75,0.1)':'transparent'};
+      border:1px solid ${tz.abbr===selectedTZ.abbr?'#c8a84b40':'#0d1820'};
+      color:${tz.abbr===selectedTZ.abbr?'#c8a84b':'#dde8f0'};
+      font-size:12px;font-family:'Rajdhani',sans-serif;font-weight:600;
+      letter-spacing:0.04em;transition:all 0.15s;
+    ">
+      <span style="font-size:14px;">${tz.flag}</span>
+      <span style="flex:1;">${tz.label}</span>
+      <span style="font-size:9px;font-family:'Space Mono',monospace;color:${tz.abbr===selectedTZ.abbr?'#c8a84b':'#3a4a5a'};">UTC${tz.offset>=0?'+':''}${tz.offset}</span>
+      ${tz.abbr===selectedTZ.abbr?'<span style="color:#00ff6a;font-size:11px;">✓</span>':''}
+    </button>
+  `).join('');
+}
+
+function selectTZ(i) {
+  selectedTZ = TIMEZONES[i];
+  try { localStorage.setItem('zv_tz', JSON.stringify(selectedTZ)); } catch(e) {}
+  closeTZPicker();
+}
+
+function setTimeFormat(fmt) {
+  timeFormat = fmt;
+  try { localStorage.setItem('zv_fmt', fmt); } catch(e) {}
+  updateFormatBtns();
+}
+
+function updateFormatBtns() {
+  const b12 = document.getElementById('fmt-12h');
+  const b24 = document.getElementById('fmt-24h');
+  if (!b12 || !b24) return;
+  b12.style.background    = timeFormat==='12h' ? 'rgba(200,168,75,0.12)' : 'transparent';
+  b12.style.borderColor   = timeFormat==='12h' ? '#c8a84b50' : '#0d1820';
+  b12.style.color         = timeFormat==='12h' ? '#c8a84b' : '#8a9ab0';
+  b24.style.background    = timeFormat==='24h' ? 'rgba(200,168,75,0.12)' : 'transparent';
+  b24.style.borderColor   = timeFormat==='24h' ? '#c8a84b50' : '#0d1820';
+  b24.style.color         = timeFormat==='24h' ? '#c8a84b' : '#8a9ab0';
+}
+
+function updateClock() {
+  const now       = new Date();
+  const offsetMs  = selectedTZ.offset * 60 * 60 * 1000;
+  const utcMs     = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const localTime = new Date(utcMs + offsetMs);
+
+  let h = localTime.getHours !== undefined ? localTime.getHours() : localTime.getUTCHours();
+  // Use UTC hours from the adjusted time
+  const tzDate = new Date(utcMs + offsetMs);
+  h = tzDate.getUTCHours();
+  const m = String(tzDate.getUTCMinutes()).padStart(2,'0');
+  const s = String(tzDate.getUTCSeconds()).padStart(2,'0');
+
+  let timeStr;
+  if (timeFormat === '12h') {
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    timeStr = `${String(h).padStart(2,'0')}:${m}:${s} ${ampm}`;
+  } else {
+    timeStr = `${String(h).padStart(2,'0')}:${m}:${s}`;
+  }
+
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const day    = tzDate.getUTCDate();
+  const month  = months[tzDate.getUTCMonth()];
+
+  const el = document.getElementById('db-clock');
+  if (el) el.textContent = `${day} ${month} ${timeStr} ${selectedTZ.abbr}`;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+
 </body>
 </html>    <!-- TRADINGVIEW CHART PANEL -->
     <div style="background:#010305;border:1px solid #0d1820;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;min-height:320px;">
