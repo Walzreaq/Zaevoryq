@@ -102,18 +102,8 @@ async function getSignals(plan = 'free', isAdmin = false) {
 
     if (isAdmin) {
       // Admin sees everything
-    } else if (plan === 'elite') {
-      // Elite sees current + previous month
-      const now    = new Date();
-      const start  = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      query = query.gte('created_at', start.toISOString());
-    } else if (plan === 'pro') {
-      // Pro sees last 5 signals only
-      query = query.limit(5);
-    } else {
-      // Free sees nothing — just stats
-      return { signals: [], stats: await getStats() };
-    }
+    } else // All users see full history — features are free
+    query = query.limit(200);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -188,19 +178,11 @@ function renderHistoryPage(plan, isAdmin) {
 
   getSignals(plan, isAdmin).then(({ signals, stats }) => {
     const statsHTML = renderStats(stats);
-    const canSeeSignals = isAdmin || plan === 'elite' || plan === 'pro';
+    const canSeeSignals = true; // All features free
 
     let signalsHTML = '';
 
-    if (!canSeeSignals) {
-      // Free users — blurred
-      signalsHTML = renderBlurredSignals();
-    } else {
-      signalsHTML = signals.map(s => renderSignalCard(s)).join('');
-      if (plan === 'pro') {
-        signalsHTML += renderUpgradePrompt('elite');
-      }
-    }
+    signalsHTML = signals.map(s => renderSignalCard(s)).join('');
 
     container.innerHTML = `
       <div style="max-width:900px;margin:0 auto;padding:24px;">
